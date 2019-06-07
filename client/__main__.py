@@ -11,7 +11,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-host = 'server'
+host = 'localhost'
 port = 8000
 buffersize = 1024
 encoding = 'utf-8'
