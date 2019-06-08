@@ -1,5 +1,7 @@
 import yaml
+import json
 import socket
+from datetime import datetime
 from argparse import ArgumentParser
 
 
@@ -26,8 +28,15 @@ try:
     sock = socket.socket()
     sock.connect((host, port))
     print('Client started')
+    action = input('Enter action ')
     data = input('Enter data: ')
-    sock.send(data.encode(encoding))
+    request = {
+        'action': action,
+        'data': data,
+        'time': datetime.now().timestamp()
+    }
+    s_request = json.dumps(request)
+    sock.send(s_request.encode(encoding))
     response = sock.recv(buffersize)
     print(response.decode(encoding))
 except KeyboardInterrupt:
