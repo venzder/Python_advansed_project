@@ -1,6 +1,10 @@
 import yaml
+import json
 import socket
 from argparse import ArgumentParser
+
+from actions import resolve
+from protocol import validate_request, make_response
 
 
 parser = ArgumentParser()
@@ -32,10 +36,23 @@ try:
 
     while True:
         client, address = sock.accept()
-        print(f'Client was detected {address}')
-        data = client.recv(buffersize)
-        print(data.decode(encoding))
-        client.send(data)
+        b_request = client.recv(buffersize)
+        request = json.loads(b_request.decode(encoding))
+        if validate_request(request):
+            action_name = request.get('action')
+            controller = resolve(action_name)
+            if controller:
+                try:
+                    response = controller(request)
+                except Exception as err:
+                    print(err)
+                    response = make_response(request, 500, 'internal sever error')
+            else:
+                response = make_response(request, 404, 'Action not found')
+        else:
+            response = make_response(request, 400, 'Wrong request')
+        s_response = json.dumps(response)
+        client.send(s_response.encode(encoding))
         client.close()
 except KeyboardInterrupt:
     pass
