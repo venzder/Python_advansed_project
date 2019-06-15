@@ -1,5 +1,6 @@
 import yaml
 import json
+import logging
 import socket
 from argparse import ArgumentParser
 
@@ -26,13 +27,21 @@ if args.config:
         host = config.get('host')
         port = config.get('port')
 
+logger = logging.getLogger('main')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler = logging.FileHandler('main.log')
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.DEBUG)
+logger.addHandler(file_handler)
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.DEBUG)
 
 try:
     sock = socket.socket()
 
     sock.bind((host, port))
     sock.listen(5)
-    print(f'Server was started with {host}:{port}')
+    logger.info(f'Server was started with {host}:{port}')
 
     while True:
         client, address = sock.accept()
@@ -45,11 +54,13 @@ try:
                 try:
                     response = controller(request)
                 except Exception as err:
-                    print(err)
+                    logger.critical(err)
                     response = make_response(request, 500, 'internal sever error')
             else:
+                logger.error('404 - request: {request}')
                 response = make_response(request, 404, 'Action not found')
         else:
+            logger.error('400 - request: {request}')
             response = make_response(request, 400, 'Wrong request')
         s_response = json.dumps(response)
         client.send(s_response.encode(encoding))
