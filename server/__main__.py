@@ -2,6 +2,7 @@ import yaml
 import json
 import logging
 import socket
+import select
 from argparse import ArgumentParser
 
 from actions import resolve
@@ -45,19 +46,35 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+requests = []
+connections = []
 
 try:
     sock = socket.socket()
 
     sock.bind((host, port))
+    sock.setblocking(False)
     sock.listen(5)
     logging.info(f'Server was started with {host}:{port}')
 
     while True:
-        client, address = sock.accept()
-        b_request = client.recv(buffersize)
-        b_response = handle_default_request(b_request)
-        client.send(b_response)
-        client.close()
+        try:
+            client, address = sock.accept()
+            logging.info(f'Client with address {address} was detected.')
+            connections.append(client)
+        except:
+            pass
+        rlist, wlist, xlist = select.select(
+            connections, connections, connections, 0
+        )
+
+        for r_client in rlist:
+            b_request = r_client.recv(buffersize)
+            requests.append(b_request)
+        if requests:
+            b_request = requests.pop()
+            b_response = handle_default_request(b_request)
+            for w_client in wlist:
+                w_client.send(b_response)
 except KeyboardInterrupt:
     pass
