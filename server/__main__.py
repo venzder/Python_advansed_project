@@ -1,6 +1,7 @@
 import yaml
 import json
 import logging
+import threading
 import socket
 import select
 from argparse import ArgumentParser
@@ -49,11 +50,22 @@ logging.basicConfig(
 requests = []
 connections = []
 
+
+def read(client, requests, buffersize):
+    b_request = client.recv(buffersize)
+    requests.append(b_request)
+
+
+def write(client, response):
+    client.send(response)
+
+
 try:
     sock = socket.socket()
 
     sock.bind((host, port))
-    sock.setblocking(False)
+    # sock.setblocking(False)
+    sock.settimeout(0)
     sock.listen(5)
     logging.info(f'Server was started with {host}:{port}')
 
@@ -69,12 +81,13 @@ try:
         )
 
         for r_client in rlist:
-            b_request = r_client.recv(buffersize)
-            requests.append(b_request)
+            rthread = threading.Thread(target=read, args=(r_client, requests, buffersize))
+            rthread.start()
         if requests:
             b_request = requests.pop()
             b_response = handle_default_request(b_request)
             for w_client in wlist:
-                w_client.send(b_response)
+                wthread = threading.Thread(target=write, args=(w_client, b_response))
+                wthread.start()
 except KeyboardInterrupt:
     pass
